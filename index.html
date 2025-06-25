@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LME终端</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Consolas', 'SF Mono', 'Monaco', monospace;
+        }
+        
+        body {
+            background-color: #0c0f11;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            color: #d0d0d0;
+            line-height: 1.5;
+        }
+        
+        .header {
+            background: linear-gradient(to bottom, #2c313a, #20252b);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #3c4955;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        }
+        
+        .server-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .status-indicator {
+            width: 极速快三10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #28a745;
+            margin-right: 12px;
+            box-shadow: 0 0 8px #28a745;
+        }
+        
+        .server-details {
+            font-size: 14px;
+        }
+        
+        .terminal-body {
+            flex: 1;
+            overflow: auto;
+            padding: 25px;
+            position: relative;
+            background: linear-gradient(160deg, #0c1a22 0%, #091018 100%);
+            background-size: 400% 400%;
+            animation: gradientMotion 20s ease infinite;
+        }
+        
+        @keyframes gradientMotion {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .terminal-content {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .output-line {
+            margin-bottom: 15px;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeInUp 0.3s forwards;
+            position: relative;
+            padding-left: 25px;
+        }
+        
+        .output极速快三-line::before {
+            content: ">";
+            position: absolute;
+            left: 0;
+            color: #3c9af0;
+            font-weight: bold;
+        }
+        
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 18px;
+            background-color: #9ecaed;
+            margin-left: 5px;
+            animation: blink 1s infinite;
+            vertical-align: middle;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        
+        .line-content {
+            display: inline-block;
+        }
+        
+        /* Content coloring */
+        .datetime { color: #5f875f; }
+        .info { color: #4ca6ff; }
+        .success { color: #72c474; }
+        .warning { color: #e2b86b; }
+        .error { color: #e06c75; }
+        .prompt { color: #9ecaed; }
+        .highlight { color: #e0c376; }
+        .system { color: #c678dd; }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(20, 25, 32, 0.7);
+            border-radius: 5px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(to bottom, #3c9af0, #2d78c5);
+            border-radius: 5px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4ca6ff;
+        }
+        
+        .terminal-footer {
+            padding: 12px 20px;
+            background-color: #0e1319;
+            color: #718ca1;
+            font-size: 12px;
+            text-align: center;
+            border-top: 1px solid #263340;
+        }
+        
+        /* 新增的输入区域样式 */
+        .input-line {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-left: 25px;
+            position: relative;
+        }
+        
+        .input-prompt {
+            color: #9ecaed;
+            margin-right: 8px;
+        }
+        
+        .command-input {
+            flex-grow: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #d0d0d0;
+            font-family: inherit;
+            font-size: 16px;
+            caret-color: #9ecaed;
+        }
+        
+        .command-input::placeholder {
+            color: #5a7080;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .header {
+                padding: 10px 15px;
+            }
+            .terminal-body {
+                padding: 15px;
+            }
+            .server-details {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="server-info">
+            <div class="status-indicator"></div>
+            <div class="server-details">
+                LME内部终端 &mdash; 登录身份:melicssa &mdash; PORT: 46
+            </div>
+        </div>
+        <div class="terminal-actions">
+            <span class="info">TERMINAL OUTPUT MODE: LIVE</span>
+        </div>
+    </div>
+    
+    <div class="terminal-body">
+        <div class="terminal-content" id="terminalContent">
+            <!-- Content will be added dynamically -->
+        </div>
+    </div>
+    
+    <div class="terminal-footer">
+        <span class="info">LME &mdash; 现在时间: <span class="datetime" id="timestamp"></span></span>
+    </div>
+
+    <script>
+        // 获取当前日期用于页脚
+        document.getElementById('timestamp').textContent = new Date().toLocaleString();
+        
+        // 预定义终端内容 - 可以在原文件更改这些行来改变输出内容
+        const terminalContent = [
+            {text: "[ <span class='datetime'>2025-05-07 14:35:17 UTC</span> ] INITIALIZING TERMINAL SESSION", delay: 100},
+            {text: "Connecting to <span class='highlight'>SERVER.TERMINAL.NET</span>...", delay: 80},
+            {text: "<span class='success'>√ Secure connection established</span> (AES-256-GCM)", delay: 60},
+            {text: "Authenticating user: <span class='prompt'>root</span>", delay: 50},
+            {text: "<span class='info'>Checking security token...</span>", delay: 70},
+            {text: "<span class='success'>√ Authentication successful</极速快三span>", delay: 80},
+            {text: "--------------------------------------------------", delay: 100},
+            {text: "SYSTEM STATUS REPORT", delay: 120},
+            {text: "01000001 01100010 01101110 01101111 01110010 01101101 01100001 01101100 00100000 01110000 01110010 01101111 01100111 01110010 01100001 01101101 00100000 01101111 01110000 01100101 01110010 01100001 01110100 01101001 01101111 01101110", delay: 60},
+            {text: "<span class='system'>Kernel:</span> 5.14.0-284.11.1.el9_2.x86_64", delay: 60},
+            {text: "<span class='system'>Uptime:</span> 12 days, 6 hours, 45 min", delay: 70},
+            {text: "<span class='system'>CPU:</span> 4 cores @ 3.60GHz | Load: <span class='info'>28%</span>", delay: 50},
+            {text: "<span class='system'>Memory:</span> 8.2/16 GB (<span class='info'>51%</span>) used", delay: 50},
+            {text: "<span class='system'>Storage:</span> 256 GB SSD | Used: <span class='warning'>84%</span>", delay: 50},
+            {text: "<span class='system'>Network:</span> 38 MB/s ↑ | 64 MB/s ↓", delay: 60},
+            {text: "--------------------------------------------------", delay: 100},
+            {text: "<span class='info'>[ SECURITY MONITOR ]</span> All firewalls active", delay: 90},
+            {text: "<span class='info'>[ BACKUP SYSTEM ]</span> Last backup: <span class='highlight'>2023-05-06 03:00 UTC</span>", delay: 70},
+            {text: "<span class='info'>[ LOG MONITOR ]</span> 142 new entries today", delay: 80},
+            {text: "--------------------------------------------------", delay: 100},
+            {text: "<span class='warning'>!</span> Storage nearing capacity - <span class='warning'>84% disk space used</span>", delay: 90},
+            {text: "--------------------------------------------------", delay: 100},
+            {text: "Start to check the condition of the acupoint", delay: 60},
+            {text: "Entity 001[unknown]", delay: 60},
+            {text: "Entity 002[normal]", delay: 60},
+            {text: "Entity 003[normal]", delay: 60},
+            {text: "Entity 004[normal]", delay: 60},
+            {text: "Entity 005[normal]", delay: 60},
+            {text: "Check is complete", delay: 60},
+            {text: "--------------------------------------------------", delay: 100},
+            {text: "<span class='warning'>!</span> Storage nearing capacity - <span class='warning'>84% disk space used</span>", delay: 90},
+            {text: "<span class='warning'>!</span> Recommended action: Clean unnecessary files", delay: 100},
+            {text: "--------------------------------------------------", delay: 100},
+            {text: "<span class='success'>All critical systems operational</span>", delay: 120}
+        ];
+
+        const terminalContainer = document.getElementById('terminalContent');
+        let lineIndex = 0;
+        
+        // 新增的输入处理函数
+        function setupCommandInput() {
+            const inputLine = document.createElement('div');
+            inputLine.className = 'input-line';
+            
+            const prompt = document.createElement('span');
+            prompt.className = 'input-prompt';
+            prompt.textContent = 'melicssa@LME:~$';
+            
+            const inputField = document.createElement('input');
+            inputField.type = 'text';
+            inputField.className = 'command-input';
+            inputField.placeholder = '输入命令';
+            inputField.id = 'commandInput';
+            
+            // 添加事件监听器 - 修改为新的判断逻辑
+            inputField.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    const command = this.value.trim();
+                    
+                    // 添加输入内容到终端
+                    const commandElement = document.createElement('div');
+                    commandElement.className = 'output-line';
+                    commandElement.innerHTML = prompt.textContent + ' ' + command;
+                    terminalContainer.insertBefore(commandElement, inputLine);
+                    
+                    // 添加输入反馈
+                    const feedbackElement = document.createElement('div');
+                    feedbackElement.className = 'output-line';
+                    
+                    // 修改为新的判断逻辑
+                    if (command === 'Entity 001') {
+                        feedbackElement.innerHTML = "保密";
+                        feedbackElement.classList.add('success');
+                    } else if (command) {
+                        feedbackElement.innerHTML = "未知命令,请检查后再试";
+                        feedbackElement.classList.add('error');
+                    }
+                    
+                    if (command) {
+                        terminalContainer.insertBefore(feedbackElement, inputLine);
+                    }
+                    
+                    // 重置输入框
+                    this.value = '';
+                    
+                    // 滚动到底部
+                    terminalContainer.scrollTop = terminalContainer.scrollHeight;
+                }
+            });
+            
+            inputLine.appendChild(prompt);
+            inputLine.appendChild(inputField);
+            terminalContainer.appendChild(inputLine);
+            
+            // 自动聚焦到输入框
+            inputField.focus();
+            
+            // 滚动到底部
+            terminalContainer.scrollTop = terminalContainer.scrollHeight;
+        }
+        
+        // 添加内容行函数
+        function addContentLine(line) {
+            const lineElement = document.createElement('div');
+            lineElement.className = 'output-line';
+            lineElement.innerHTML = line.text;
+            terminalContainer.appendChild(lineElement);
+            
+            // 滚动到底部
+            terminalContainer.scrollTop = terminalContainer.scrollHeight;
+        }
+        
+        // 初始输出过程
+        function initTerminalOutput() {
+            if (lineIndex < terminalContent.length) {
+                const line = terminalContent[lineIndex];
+                
+                setTimeout(() => {
+                    addContentLine(line);
+                    lineIndex++;
+                    initTerminalOutput();
+                }, line.delay);
+            } else {
+                // 所有内容输出完成后设置输入
+                setTimeout(() => {
+                    setupCommandInput();
+                }, 300);
+            }
+        }
+        
+        // 开始终端输出
+        setTimeout(initTerminalOutput, 800);
+    </script>
+</body>
+</html>
